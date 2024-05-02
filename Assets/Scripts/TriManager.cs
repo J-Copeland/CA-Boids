@@ -6,16 +6,20 @@ using TMPro;
 public class TriManager : MonoBehaviour
 {
 
+    //baseline GameObjects
     [SerializeField] private GameObject triUpPrefab;
     [SerializeField] private GameObject triDownPrefab;
     [SerializeField] private List<TriController> triList;
     [SerializeField] private GameObject canvas;
 
+    //Unity specified data
     [SerializeField] private int rowNumber;
 
+    //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
-    private int stepCount;
+    [SerializeField] private Stack<List<TriController>> partialCheckpoint = new Stack<List<TriController>>();
     [SerializeField] private List<TriController> activeTris;
+    private int stepCount;
 
     // Start is called before the first frame update
     void Start()
@@ -29,56 +33,12 @@ public class TriManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown("k"))
-        {
-            stepCount++;
-            stepperText.text = "Steps: " + stepCount;
-            Debug.Log("step: " + stepCount);
-
-            List<TriController> trisToAdd = new List<TriController>();
-            for (int i = 0; i < triList.Count; i++)
-            {
-                int activeAdjs = 0;
-                for (int j = 0; j < triList[i].getAdjTris().Length; j++)
-                {
-                    if (triList[i].getAdjTris()[j].getState()) activeAdjs++;
-                }
-                if (activeAdjs >= 2)
-                {
-                    trisToAdd.Add(triList[i]);
-                }
-            }
-
-            List<TriController> trisToRemove = new List<TriController>();
-            for (int i = 0; i < activeTris.Count; i++)
-            {
-                int activeAdjs = 0;
-                for (int j = 0; j < activeTris[i].getAdjTris().Length; j++)
-                {
-                    if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
-                }
-                Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
-                if (activeAdjs < 2)
-                {
-                    trisToRemove.Add(activeTris[i]);
-                }
-            }
-
-            foreach(TriController tri in trisToAdd)
-            {
-                tri.setStateTrue();
-            }
-
-            foreach(TriController tri in trisToRemove)
-            {
-                tri.setStateFalse();
-            }
-
-        }
+        if (Input.GetKeyDown("k")) StepForward();
+        if (Input.GetKeyDown("j")) StepBackward();
     }
 
-    public List<TriController> getList() { return triList; }
-    public void setList(List<TriController> newList) { triList = newList; }
+    public List<TriController> GetList() { return triList; }
+    public void SetList(List<TriController> newList) { triList = newList; }
 
     private void GenerateGrid(Transform holder)
     {
@@ -100,7 +60,7 @@ public class TriManager : MonoBehaviour
                 //set adj from right up-pointy to left if exists
                 if (downController != null)
                 {
-                    createAdjacencies(upController, downController);
+                    CreateAdjacencies(upController, downController);
                 }
                 
 
@@ -116,9 +76,9 @@ public class TriManager : MonoBehaviour
                     triList.Add(downController);
 
                     //set adj from left up-pointy
-                    createAdjacencies(upController, downController);
+                    CreateAdjacencies(upController, downController);
                     //set adj from down-pointy to tri upwards
-                    createAdjacencies(downController, triList[triList.Count - i * 2 - 1]);
+                    CreateAdjacencies(downController, triList[triList.Count - i * 2 - 1]);
 
                 }
             }
@@ -126,7 +86,7 @@ public class TriManager : MonoBehaviour
     }
 
     //creates adjacencies both ways - couldn't think of a reason to only have one way
-    private void createAdjacencies(TriController tri1, TriController tri2)
+    private void CreateAdjacencies(TriController tri1, TriController tri2)
     {
         List<TriController> currentAdj = new List<TriController>(tri1.getAdjTris());
         currentAdj.Add(tri2);
@@ -137,13 +97,90 @@ public class TriManager : MonoBehaviour
         tri2.setAdjTris(currentAdj.ToArray());
     }
 
-    public void addTri(TriController newTri)
+    public void AddTri(TriController newTri)
     {
         if(!activeTris.Contains(newTri)) activeTris.Add(newTri);
     }
 
-    public void removeTri(TriController newTri)
+    public void RemoveTri(TriController newTri)
     {
         activeTris.Remove(newTri);
+    }
+
+
+    private void StepForward()
+    {
+        stepCount++;
+        stepperText.text = "Steps: " + stepCount;
+
+        //activate tris
+        List<TriController> trisToAdd = new List<TriController>();
+        for (int i = 0; i < triList.Count; i++)
+        {
+            int activeAdjs = 0;
+            for (int j = 0; j < triList[i].getAdjTris().Length; j++)
+            {
+                if (triList[i].getAdjTris()[j].getState()) activeAdjs++;
+            }
+            if (activeAdjs >= 2)
+            {
+                trisToAdd.Add(triList[i]);
+            }
+        }
+
+        //deactivate tris
+        List<TriController> trisToRemove = new List<TriController>();
+        for (int i = 0; i < activeTris.Count; i++)
+        {
+            int activeAdjs = 0;
+            for (int j = 0; j < activeTris[i].getAdjTris().Length; j++)
+            {
+                if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
+            }
+            Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
+            if (activeAdjs < 2)
+            {
+                trisToRemove.Add(activeTris[i]);
+            }
+        }
+        partialCheckpoint.Push(trisToRemove);
+
+        //push changes (in order of processes)
+        foreach (TriController tri in trisToAdd) tri.setStateTrue();
+        foreach (TriController tri in trisToRemove) tri.setStateFalse();
+    }
+
+    private void StepBackward()
+    {
+        if(stepCount > 0)
+        {
+
+            stepCount--;
+            stepperText.text = "Steps: " + stepCount;
+
+            //activate tris
+            List<TriController> trisToAdd = partialCheckpoint.Pop();
+
+
+            //deactivate tris
+            List <TriController> trisToRemove = new List<TriController>();
+            for (int i = 0; i < activeTris.Count; i++)
+            {
+                int activeAdjs = 0;
+                for (int j = 0; j < activeTris[i].getAdjTris().Length; j++)
+                {
+                    if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
+                }
+                Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
+                if (activeAdjs < 2)
+                {
+                    trisToRemove.Add(activeTris[i]);
+                }
+            }
+
+            //push changes (in order of processes)
+            foreach (TriController tri in trisToAdd) tri.setStateTrue();
+            foreach (TriController tri in trisToRemove) tri.setStateFalse();
+        }
     }
 }

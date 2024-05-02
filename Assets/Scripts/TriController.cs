@@ -21,7 +21,7 @@ public class TriController : MonoBehaviour
         image.color = Color.white;
         image.alphaHitTestMinimumThreshold = alphaThreshold;
 
-        List<TriController> allTris = triManager.getList();
+        List<TriController> allTris = triManager.GetList();
         //adjTris = CalculateAdjacencies(allTris);
 
 
@@ -62,12 +62,12 @@ public class TriController : MonoBehaviour
         if (state)
         {
             image.color = Color.red;
-            triManager.addTri(this);
+            triManager.AddTri(this);
         }
         else
         {
             image.color = Color.white;
-            triManager.removeTri(this);
+            triManager.RemoveTri(this);
         }
     }
 
