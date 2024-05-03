@@ -18,6 +18,7 @@ public class TriManager : MonoBehaviour
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
     [SerializeField] private Stack<List<TriController>> partialCheckpoint = new Stack<List<TriController>>();
+    [SerializeField] private Stack<List<TriController>> partialRedoCheckpoint = new Stack<List<TriController>>();
     [SerializeField] private List<TriController> activeTris;
     private int stepCount;
 
@@ -107,14 +108,21 @@ public class TriManager : MonoBehaviour
         activeTris.Remove(newTri);
     }
 
-
+    //when placing a tri, clear all future redo layers up to current point.
+    //also fix logic with stacks not accounting for placed tris that should be active more than one turn in a row.
     private void StepForward()
     {
         stepCount++;
         stepperText.text = "Steps: " + stepCount;
 
-        //activate tris
+        //SECTION: ACTIVATE TRIS
         List<TriController> trisToAdd = new List<TriController>();
+        
+        //adds from redo stack if any present
+        try { trisToAdd = partialRedoCheckpoint.Pop();
+        } catch { }
+
+        //logic loop for cellaut
         for (int i = 0; i < triList.Count; i++)
         {
             int activeAdjs = 0;
@@ -128,8 +136,10 @@ public class TriManager : MonoBehaviour
             }
         }
 
-        //deactivate tris
+        //SECTION: DEACTIVATE TRIS
         List<TriController> trisToRemove = new List<TriController>();
+
+        //logic loop for reverse cellaut
         for (int i = 0; i < activeTris.Count; i++)
         {
             int activeAdjs = 0;
@@ -137,13 +147,16 @@ public class TriManager : MonoBehaviour
             {
                 if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
             }
-            Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
+            //Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
             if (activeAdjs < 2)
             {
                 trisToRemove.Add(activeTris[i]);
             }
         }
+        
+        //push changes to undo stack
         partialCheckpoint.Push(trisToRemove);
+        //Debug.Log("pushing: " + trisToRemove + " to undo. Now on: " + partialCheckpoint.Count + " layers.");
 
         //push changes (in order of processes)
         foreach (TriController tri in trisToAdd) tri.setStateTrue();
@@ -171,12 +184,16 @@ public class TriManager : MonoBehaviour
                 {
                     if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
                 }
-                Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
+                //Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
                 if (activeAdjs < 2)
                 {
                     trisToRemove.Add(activeTris[i]);
                 }
             }
+
+            //push changes to redo stack
+            partialRedoCheckpoint.Push(trisToRemove);
+            //Debug.Log("pushing: " + trisToRemove + " to redo. Now on: " + partialRedoCheckpoint.Count + " layers.");
 
             //push changes (in order of processes)
             foreach (TriController tri in trisToAdd) tri.setStateTrue();
