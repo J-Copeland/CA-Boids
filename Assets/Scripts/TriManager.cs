@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using TMPro;
 
@@ -108,8 +109,8 @@ public class TriManager : MonoBehaviour
         activeTris.Remove(newTri);
     }
 
-    //when placing a tri, clear all future redo layers up to current point.
-    //also fix logic with stacks not accounting for placed tris that should be active more than one turn in a row.
+    //stepping only works 1 way.
+    //more complex design needed for 2-way, future and past tris obfuscating other tris leads to incorrect deletions etc.
     private void StepForward()
     {
         stepCount++;
@@ -117,10 +118,6 @@ public class TriManager : MonoBehaviour
 
         //SECTION: ACTIVATE TRIS
         List<TriController> trisToAdd = new List<TriController>();
-        
-        //adds from redo stack if any present
-        try { trisToAdd = partialRedoCheckpoint.Pop();
-        } catch { }
 
         //logic loop for cellaut
         for (int i = 0; i < triList.Count; i++)
@@ -153,10 +150,13 @@ public class TriManager : MonoBehaviour
                 trisToRemove.Add(activeTris[i]);
             }
         }
+
+        
         
         //push changes to undo stack
-        partialCheckpoint.Push(trisToRemove);
-        //Debug.Log("pushing: " + trisToRemove + " to undo. Now on: " + partialCheckpoint.Count + " layers.");
+        partialCheckpoint.Push(activeTris.ToList());
+
+        Debug.Log("pushing: " + activeTris.Count + " to undo. Now on: " + partialCheckpoint.Count + " layers.");
 
         //push changes (in order of processes)
         foreach (TriController tri in trisToAdd) tri.setStateTrue();
@@ -171,33 +171,48 @@ public class TriManager : MonoBehaviour
             stepCount--;
             stepperText.text = "Steps: " + stepCount;
 
-            //activate tris
+            //clear grid
+            while(activeTris.Count > 0) activeTris[0].setStateFalse();
+
+            //load tris
             List<TriController> trisToAdd = partialCheckpoint.Pop();
+            foreach (TriController tri in trisToAdd) tri.setStateTrue();
 
 
-            //deactivate tris
-            List <TriController> trisToRemove = new List<TriController>();
-            for (int i = 0; i < activeTris.Count; i++)
-            {
-                int activeAdjs = 0;
-                for (int j = 0; j < activeTris[i].getAdjTris().Length; j++)
-                {
-                    if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
-                }
-                //Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
-                if (activeAdjs < 2)
-                {
-                    trisToRemove.Add(activeTris[i]);
-                }
-            }
+            //---------------------2-WAY COMPATABLE VERSION------------------------
+
+            ////activate tris
+            //List<TriController> trisToAdd = partialCheckpoint.Pop();
+
+
+            ////deactivate tris
+            //List <TriController> trisToRemove = new List<TriController>();
+            //for (int i = 0; i < activeTris.Count; i++)
+            //{
+            //    int activeAdjs = 0;
+            //    for (int j = 0; j < activeTris[i].getAdjTris().Length; j++)
+            //    {
+            //        if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
+            //    }
+            //    //Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
+            //    if (activeAdjs < 2)
+            //    {
+            //        trisToRemove.Add(activeTris[i]);
+            //    }
+            //}
+
+            //if(partialCheckpoint.Count > 0)
+            //{
+            //    trisToRemove.Except(partialCheckpoint.Peek());
+            //}
+
 
             //push changes to redo stack
-            partialRedoCheckpoint.Push(trisToRemove);
             //Debug.Log("pushing: " + trisToRemove + " to redo. Now on: " + partialRedoCheckpoint.Count + " layers.");
 
-            //push changes (in order of processes)
-            foreach (TriController tri in trisToAdd) tri.setStateTrue();
-            foreach (TriController tri in trisToRemove) tri.setStateFalse();
+            ////push changes (in order of processes)
+            //foreach (TriController tri in trisToAdd) tri.setStateTrue();
+            //foreach (TriController tri in trisToRemove) tri.setStateFalse();
         }
     }
 }
