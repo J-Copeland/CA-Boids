@@ -11,6 +11,7 @@ public class TriController : MonoBehaviour
     [SerializeField] private bool polarity;
     [SerializeField] private bool state = false;
     [SerializeField] private TriController[] adjTris;
+    [SerializeField] private TriController[] cornerAdjTris;
     private Image image;
     private float alphaThreshold = 0.1f;
 
@@ -55,7 +56,10 @@ public class TriController : MonoBehaviour
     public TriController[] getAdjTris() { return adjTris; }
     public void setAdjTris(TriController[] adjTris) { this.adjTris = adjTris; }
 
-    
+    public TriController[] getCornerAdjTris() { return cornerAdjTris; }
+    public void setCornerAdjTris(TriController[] cornerAdjTris) { this.cornerAdjTris = cornerAdjTris; }
+
+
 
     private void StateCheck()
     {

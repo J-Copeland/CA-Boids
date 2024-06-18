@@ -1257,7 +1257,7 @@ MonoBehaviour:
   triDownPrefab: {fileID: 6112415810969346678, guid: 934489778e262004c91cb586973784ff, type: 3}
   triList: []
   canvas: {fileID: 306507138}
-  rowNumber: 8
+  rowNumber: 80
   stepperText: {fileID: 713148566}
   activeTris: []
 --- !u!224 &1789003191

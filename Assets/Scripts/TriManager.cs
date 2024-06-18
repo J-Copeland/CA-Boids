@@ -15,6 +15,7 @@ public class TriManager : MonoBehaviour
 
     //Unity specified data
     [SerializeField] private int rowNumber;
+    [SerializeField] private AutManager autManager = new AutManager(2,3,5,6,true); //logical upper integer limit of 12 if true, 3 if false
 
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
@@ -30,6 +31,11 @@ public class TriManager : MonoBehaviour
         triDownPrefab.GetComponent<TriController>().setTriManager(this);
         Transform triHolder = canvas.transform.GetChild(1).GetChild(0).GetChild(0).GetComponent<Transform>();
         GenerateGrid(triHolder);
+
+        foreach (TriController tri in triList)
+        {
+            CreateCornerAdjacencies(tri);
+        }
     }
 
     // Update is called once per frame
@@ -85,6 +91,8 @@ public class TriManager : MonoBehaviour
                 }
             }
         }
+
+        
     }
 
     //creates adjacencies both ways - couldn't think of a reason to only have one way
@@ -97,6 +105,45 @@ public class TriManager : MonoBehaviour
         currentAdj = new List<TriController>(tri2.getAdjTris());
         currentAdj.Add(tri1);
         tri2.setAdjTris(currentAdj.ToArray());
+    }
+
+    private void CreateCornerAdjacencies(TriController tri)
+    {
+        List<TriController> cornerAdjacencies = new List<TriController>();
+        TriController[] sideAdjacencies = tri.getAdjTris();
+        for(int i = 0; i < sideAdjacencies.Length; i++)
+        {
+            TriController[] tempAdj = sideAdjacencies[i].getAdjTris();
+            for (int j = 0; j < tempAdj.Length; j++) //time inefficient
+            {
+                if(tempAdj[j] != tri)   cornerAdjacencies.Add(tempAdj[j]);
+            }
+        }
+        cornerAdjacencies = cornerAdjacencies.Distinct().ToList();
+        
+        //reset list for round 2
+        List<TriController> secondaryCornerAdjacencies = new List<TriController>();
+        for (int w = 0; w < cornerAdjacencies.Count; w++)
+        {
+            for (int x = 0; x < cornerAdjacencies[w].getAdjTris().Length; x++)
+            {
+                for (int y = 0; y < cornerAdjacencies.Count; y++)
+                {
+                    for (int z = 0; z < cornerAdjacencies[y].getAdjTris().Length; z++) //fix error
+                    {
+                        if (cornerAdjacencies[w] != cornerAdjacencies[y] && cornerAdjacencies[w].getAdjTris()[x] == cornerAdjacencies[y].getAdjTris()[z]) //please rewrite this soon
+                        {
+                            secondaryCornerAdjacencies.Add(cornerAdjacencies[w].getAdjTris()[x]);
+                        }
+                    }
+                }
+            }
+        }
+
+        secondaryCornerAdjacencies = secondaryCornerAdjacencies.Distinct().ToList();
+        secondaryCornerAdjacencies = secondaryCornerAdjacencies.Except(sideAdjacencies).ToList();
+        cornerAdjacencies.AddRange(secondaryCornerAdjacencies);
+        tri.setCornerAdjTris(cornerAdjacencies.ToArray());
     }
 
     public void AddTri(TriController newTri)
@@ -116,22 +163,25 @@ public class TriManager : MonoBehaviour
         stepCount++;
         stepperText.text = "Steps: " + stepCount;
 
-        //SECTION: ACTIVATE TRIS
-        List<TriController> trisToAdd = new List<TriController>();
+        ////SECTION: ACTIVATE TRIS
+        //List<TriController> trisToAdd = new List<TriController>();
 
-        //logic loop for cellaut
-        for (int i = 0; i < triList.Count; i++)
-        {
-            int activeAdjs = 0;
-            for (int j = 0; j < triList[i].getAdjTris().Length; j++)
-            {
-                if (triList[i].getAdjTris()[j].getState()) activeAdjs++;
-            }
-            if (activeAdjs >= 2)
-            {
-                trisToAdd.Add(triList[i]);
-            }
-        }
+        ////logic loop for cellaut
+        //for (int i = 0; i < triList.Count; i++)
+        //{
+        //    int activeAdjs = 0;
+        //    for (int j = 0; j < triList[i].getAdjTris().Length; j++)
+        //    {
+        //        if (triList[i].getAdjTris()[j].getState()) activeAdjs++;
+        //    }
+
+        //    if (activeAdjs >= 2)
+        //    {
+        //        trisToAdd.Add(triList[i]);
+        //    }
+        //}
+
+        List<TriController> trisToAdd = autManager.Step(triList, activeTris);
 
         //SECTION: DEACTIVATE TRIS
         List<TriController> trisToRemove = new List<TriController>();
