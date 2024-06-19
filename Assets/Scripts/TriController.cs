@@ -15,25 +15,14 @@ public class TriController : MonoBehaviour
     private Image image;
     private float alphaThreshold = 0.1f;
 
-    // Start is called before the first frame update
+
     void Awake()
     {
         image = GetComponent<Image>();
         image.color = Color.white;
         image.alphaHitTestMinimumThreshold = alphaThreshold;
-
-        List<TriController> allTris = triManager.GetList();
-        //adjTris = CalculateAdjacencies(allTris);
-
-
-
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
 
     public int getJ() { return jCoord; }
     public void setJ(int newJ) { jCoord = newJ; }

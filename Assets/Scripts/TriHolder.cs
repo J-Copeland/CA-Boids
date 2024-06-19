@@ -15,18 +15,5 @@ public class TriHolder : MonoBehaviour, IDragHandler, IScrollHandler
     {
         transform.GetChild(0).localScale = new Vector2(Mathf.Clamp(transform.GetChild(0).localScale.x + eventData.scrollDelta.y * 0.05f, 0, 5), Mathf.Clamp(transform.GetChild(0).localScale.y + eventData.scrollDelta.y * 0.05f, 0, 5));
     }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     
 }

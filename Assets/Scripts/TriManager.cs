@@ -41,12 +41,14 @@ public class TriManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown("k")) StepForward();
-        if (Input.GetKeyDown("j")) StepBackward();
+        if (Input.GetKeyDown(KeyCode.K)) StepForward();
+        if (Input.GetKeyDown(KeyCode.J)) StepBackward();
     }
 
     public List<TriController> GetList() { return triList; }
+
     public void SetList(List<TriController> newList) { triList = newList; }
+
 
     private void GenerateGrid(Transform holder)
     {
@@ -95,6 +97,7 @@ public class TriManager : MonoBehaviour
         
     }
 
+
     //creates adjacencies both ways - couldn't think of a reason to only have one way
     private void CreateAdjacencies(TriController tri1, TriController tri2)
     {
@@ -107,8 +110,10 @@ public class TriManager : MonoBehaviour
         tri2.setAdjTris(currentAdj.ToArray());
     }
 
+
     private void CreateCornerAdjacencies(TriController tri)
     {
+        //part 1
         List<TriController> cornerAdjacencies = new List<TriController>();
         TriController[] sideAdjacencies = tri.getAdjTris();
         for(int i = 0; i < sideAdjacencies.Length; i++)
@@ -121,28 +126,31 @@ public class TriManager : MonoBehaviour
         }
         cornerAdjacencies = cornerAdjacencies.Distinct().ToList();
         
-        //reset list for round 2
+        //new list for part 2
         List<TriController> secondaryCornerAdjacencies = new List<TriController>();
-        for (int w = 0; w < cornerAdjacencies.Count; w++)
+        Dictionary<TriController, int> cornerAdjCounter = new Dictionary<TriController, int>();
+
+        foreach(TriController adjTri in cornerAdjacencies)
         {
-            for (int x = 0; x < cornerAdjacencies[w].getAdjTris().Length; x++)
+            TriController[] adjTriArr = adjTri.getAdjTris();
+            foreach(TriController potentialAdj in adjTriArr)
             {
-                for (int y = 0; y < cornerAdjacencies.Count; y++)
-                {
-                    for (int z = 0; z < cornerAdjacencies[y].getAdjTris().Length; z++) //fix error
-                    {
-                        if (cornerAdjacencies[w] != cornerAdjacencies[y] && cornerAdjacencies[w].getAdjTris()[x] == cornerAdjacencies[y].getAdjTris()[z]) //please rewrite this soon
-                        {
-                            secondaryCornerAdjacencies.Add(cornerAdjacencies[w].getAdjTris()[x]);
-                        }
-                    }
-                }
+                if (cornerAdjCounter.ContainsKey(potentialAdj))
+                    cornerAdjCounter[potentialAdj] += 1;
+                else
+                    cornerAdjCounter.Add(potentialAdj, 1);
             }
         }
 
-        secondaryCornerAdjacencies = secondaryCornerAdjacencies.Distinct().ToList();
-        secondaryCornerAdjacencies = secondaryCornerAdjacencies.Except(sideAdjacencies).ToList();
-        cornerAdjacencies.AddRange(secondaryCornerAdjacencies);
+        for(int i = 0; i < cornerAdjCounter.Count; i++)
+        {
+            if(cornerAdjCounter.ElementAt(i).Value > 1)
+            {
+                cornerAdjacencies.Add(cornerAdjCounter.ElementAt(i).Key);
+            }
+        }
+
+        cornerAdjacencies = cornerAdjacencies.Except(sideAdjacencies).ToList();
         tri.setCornerAdjTris(cornerAdjacencies.ToArray());
     }
 
@@ -151,10 +159,12 @@ public class TriManager : MonoBehaviour
         if(!activeTris.Contains(newTri)) activeTris.Add(newTri);
     }
 
+
     public void RemoveTri(TriController newTri)
     {
         activeTris.Remove(newTri);
     }
+
 
     //stepping only works 1 way.
     //more complex design needed for 2-way, future and past tris obfuscating other tris leads to incorrect deletions etc.
@@ -212,6 +222,7 @@ public class TriManager : MonoBehaviour
         foreach (TriController tri in trisToAdd) tri.setStateTrue();
         foreach (TriController tri in trisToRemove) tri.setStateFalse();
     }
+
 
     private void StepBackward()
     {
