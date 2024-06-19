@@ -15,7 +15,7 @@ public class TriManager : MonoBehaviour
 
     //Unity specified data
     [SerializeField] private int rowNumber;
-    [SerializeField] private AutManager autManager = new AutManager(2,3,5,6,true); //logical upper integer limit of 12 if true, 3 if false
+    [SerializeField] private AutManager autManager = new AutManager(4,6,4,4,true); //logical upper integer limit of 12 if true, 3 if false
 
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
@@ -166,61 +166,22 @@ public class TriManager : MonoBehaviour
     }
 
 
-    //stepping only works 1 way.
+    //save-state stepping only works 1 way.
     //more complex design needed for 2-way, future and past tris obfuscating other tris leads to incorrect deletions etc.
     private void StepForward()
     {
         stepCount++;
         stepperText.text = "Steps: " + stepCount;
 
-        ////SECTION: ACTIVATE TRIS
-        //List<TriController> trisToAdd = new List<TriController>();
-
-        ////logic loop for cellaut
-        //for (int i = 0; i < triList.Count; i++)
-        //{
-        //    int activeAdjs = 0;
-        //    for (int j = 0; j < triList[i].getAdjTris().Length; j++)
-        //    {
-        //        if (triList[i].getAdjTris()[j].getState()) activeAdjs++;
-        //    }
-
-        //    if (activeAdjs >= 2)
-        //    {
-        //        trisToAdd.Add(triList[i]);
-        //    }
-        //}
-
         List<TriController> trisToAdd = autManager.Step(triList, activeTris);
+        TriController[] trisToRemove = activeTris.ToArray();
 
-        //SECTION: DEACTIVATE TRIS
-        List<TriController> trisToRemove = new List<TriController>();
-
-        //logic loop for reverse cellaut
-        for (int i = 0; i < activeTris.Count; i++)
-        {
-            int activeAdjs = 0;
-            for (int j = 0; j < activeTris[i].getAdjTris().Length; j++)
-            {
-                if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
-            }
-            //Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
-            if (activeAdjs < 2)
-            {
-                trisToRemove.Add(activeTris[i]);
-            }
-        }
-
-        
-        
         //push changes to undo stack
         partialCheckpoint.Push(activeTris.ToList());
 
-        Debug.Log("pushing: " + activeTris.Count + " to undo. Now on: " + partialCheckpoint.Count + " layers.");
-
         //push changes (in order of processes)
-        foreach (TriController tri in trisToAdd) tri.setStateTrue();
         foreach (TriController tri in trisToRemove) tri.setStateFalse();
+        foreach (TriController tri in trisToAdd) tri.setStateTrue();
     }
 
 

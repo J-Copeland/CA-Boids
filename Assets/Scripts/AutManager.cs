@@ -66,20 +66,21 @@ public class AutManager
         {
             for (int i = 0; i < allTris.Count; i++)
             {
+                TriController currentTri = allTris[i];
                 int activeAdjs = 0;
-                for (int j = 0; j < allTris[i].getAdjTris().Length; j++)
+                for (int j = 0; j < currentTri.getAdjTris().Length; j++)
                 {
-                    if (allTris[i].getAdjTris()[j].getState()) activeAdjs++;
+                    if (currentTri.getAdjTris()[j].getState()) activeAdjs++;
                 }
 
-                if (allTris[i].getState() == false && activeAdjs >= Fl && activeAdjs <= Fh) //fertility check
+                if (currentTri.getState() == false && activeAdjs >= Fl && activeAdjs <= Fh) //fertility check
                 {
-                    toAdd.Add(allTris[i]);
+                    toAdd.Add(currentTri);
                 }
 
-                if (allTris[i].getState() == true && activeAdjs >= El && activeAdjs <= Eh) //environmental survival check
+                if (currentTri.getState() == true && activeAdjs >= El && activeAdjs <= Eh) //environmental survival check
                 {
-                    toAdd.Add(allTris[i]);
+                    toAdd.Add(currentTri);
                 }
             }
         }
@@ -87,25 +88,33 @@ public class AutManager
         {
             for (int i = 0; i < allTris.Count; i++)
             {
+                TriController currentTri = allTris[i];
                 int activeAdjs = 0;
-                for (int j = 0; j < allTris[i].getAdjTris().Length; j++)
+                for (int j = 0; j < currentTri.getAdjTris().Length; j++)
                 {
-                    if (allTris[i].getAdjTris()[j].getState()) activeAdjs++;
+                    if (currentTri.getAdjTris()[j].getState()) activeAdjs++;
                 }
 
-                for (int j = 0; j < allTris[i].getCornerAdjTris().Length; j++)
+                for (int j = 0; j < currentTri.getCornerAdjTris().Length; j++)
                 {
-                    if (allTris[i].getCornerAdjTris()[j].getState()) activeAdjs++;
+                    if (currentTri.getCornerAdjTris()[j].getState()) activeAdjs++;
                 }
 
-                if (allTris[i].getState() == false && activeAdjs >= Fl && activeAdjs <= Fh) //fertility check
-                {
-                    toAdd.Add(allTris[i]);
-                }
+                bool currentState = currentTri.getState();
 
-                if (allTris[i].getState() == true && activeAdjs >= El && activeAdjs <= Eh) //environmental survival check
+
+                if (currentState == false && activeAdjs >= Fl && activeAdjs <= Fh) //fertility check
                 {
-                    toAdd.Add(allTris[i]);
+                    toAdd.Add(currentTri);
+                }
+                
+                else if (currentState) //environmental survival check
+                {
+                    if (activeAdjs >= El && activeAdjs <= Eh)
+                    {
+                        toAdd.Add(currentTri);
+                    }
+                    //guard seperation allows for alive->dead tri processing here
                 }
             }
         }
