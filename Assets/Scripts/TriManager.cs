@@ -15,7 +15,7 @@ public class TriManager : MonoBehaviour
 
     //Unity specified data
     [SerializeField] private int rowNumber;
-    [SerializeField] private AutManager autManager = new AutManager(4,6,4,4,true); //logical upper integer limit of 12 if true, 3 if false
+    [SerializeField] private AutManager autManager = new AutManager(2,3,3,3,true); //logical upper integer limit of 12 if true, 3 if false
 
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;

@@ -822,11 +822,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 463295500}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -215, y: 240}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 50}
-  m_Pivot: {x: 0.5, y: 0.5}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &713148566
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1257,7 +1257,7 @@ MonoBehaviour:
   triDownPrefab: {fileID: 6112415810969346678, guid: 934489778e262004c91cb586973784ff, type: 3}
   triList: []
   canvas: {fileID: 306507138}
-  rowNumber: 80
+  rowNumber: 40
   stepperText: {fileID: 713148566}
   activeTris: []
 --- !u!224 &1789003191
