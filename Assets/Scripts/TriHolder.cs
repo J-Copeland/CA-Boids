@@ -15,8 +15,10 @@ public class TriHolder : MonoBehaviour, IDragHandler, IScrollHandler
     }
     public void OnDrag(PointerEventData eventData)
     {
-        Debug.Log("pos: " + transform.position.x + eventData.delta.x);
-        transform.localPosition = new Vector2(Mathf.Clamp(transform.localPosition.x + eventData.delta.x, -400, 400), Mathf.Clamp(transform.localPosition.y + eventData.delta.y, -400, 400)); //FIX: can behave wierdly with zoom-panning
+        float triWidth = transform.GetChild(0).localScale.x * transform.GetChild(0).GetComponent<RectTransform>().rect.width;
+        float triHeight = transform.GetChild(0).localScale.y * transform.GetChild(0).GetComponent<RectTransform>().rect.height;
+        print(triWidth);
+        transform.GetChild(0).position = new Vector2(Mathf.Clamp(transform.GetChild(0).position.x + eventData.delta.x, panelCentre.x - Screen.width/4 - triWidth/4, panelCentre.x + Screen.width/4 + triWidth/4), Mathf.Clamp(transform.GetChild(0).position.y + eventData.delta.y, panelCentre.y - Screen.height/2 - triHeight/4, panelCentre.y + Screen.height/2 + triHeight/4));
     }
 
     public void OnScroll(PointerEventData eventData)
