@@ -14,6 +14,11 @@ public class AutManager
 
     public AutManager(int El, int Eh, int Fl, int Fh, bool cornerAdjacencies)
     {
+        SetRules(El, Eh, Fl, Fh, cornerAdjacencies);
+    }
+
+    public void SetRules(int El, int Eh, int Fl, int Fh, bool cornerAdjacencies)
+    {
         this.El = El;
         this.Eh = Eh;
         this.Fl = Fl;

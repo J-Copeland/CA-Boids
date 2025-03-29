@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class TriManager : MonoBehaviour
@@ -15,14 +16,18 @@ public class TriManager : MonoBehaviour
 
     //Unity specified data
     [SerializeField] private int rowNumber;
-    [SerializeField] private AutManager autManager = new AutManager(2,3,3,3,true); //logical upper integer limit of 12 if true, 3 if false
+    private static int envLo = 3, envHi = 4, fertLo = 4, fertHi = 5;
+    private static bool countCorners = true;
+    [SerializeField] private GameObject envLoObject, envHiObject, fertLoObject, fertHiObject, cornersToggle, coordsToggle;
+    private AutManager autManager = new AutManager(envLo, envHi, fertLo, fertHi, countCorners); //logical upper integer limit of 12 if true, 3 if false
+    [SerializeField] private bool displayCoords = true;
 
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
-    [SerializeField] private Stack<List<TriController>> partialCheckpoint = new Stack<List<TriController>>();
-    [SerializeField] private Stack<List<TriController>> partialRedoCheckpoint = new Stack<List<TriController>>();
+    private Stack<List<TriController>> partialCheckpoint = new Stack<List<TriController>>();
+    private Stack<List<TriController>> partialRedoCheckpoint = new Stack<List<TriController>>();
     [SerializeField] private List<TriController> activeTris;
-    private int stepCount;
+    private int stepCount = 0;
 
     // Start is called before the first frame update
     void Start()
@@ -36,6 +41,13 @@ public class TriManager : MonoBehaviour
         {
             CreateCornerAdjacencies(tri);
         }
+
+        // establish default UI state for settings elements
+        envLoObject.GetComponent<TMP_InputField>().text = envLo.ToString();
+        envHiObject.GetComponent<TMP_InputField>().text = envHi.ToString();
+        fertLoObject.GetComponent<TMP_InputField>().text = fertLo.ToString();
+        fertHiObject.GetComponent<TMP_InputField>().text = fertHi.ToString();
+        SetCountCorners(countCorners);
     }
 
     // Update is called once per frame
@@ -45,6 +57,111 @@ public class TriManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.J)) StepBackward();
     }
 
+
+    // Get/Set stack for UI settings buttons
+    public int GetEnvLo() { return envLo; }
+    public void SetEnvLo()
+    {
+        string val = envLoObject.GetComponent<TMP_InputField>().text;
+        if (int.TryParse(val, out _))
+        {
+            envLo = int.Parse(val);
+            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+        }
+    }
+
+    public int GetEnvHi() { return envHi; }
+    public void SetEnvHi()
+    {
+        string val = envHiObject.GetComponent<TMP_InputField>().text;
+        if (int.TryParse(val, out _))
+        {
+            envHi = int.Parse(val);
+            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+        }
+    }
+
+    public int GetFertLo() { return fertLo; }
+    public void SetFertLo()
+    {
+        string val = fertLoObject.GetComponent<TMP_InputField>().text;
+        if (int.TryParse(val, out _))
+        {
+            fertLo = int.Parse(val);
+            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+        }
+    }
+
+    public int GetFertHi() { return fertHi; }
+    public void SetFertHi()
+    {
+        string val = fertHiObject.GetComponent<TMP_InputField>().text;
+        if (int.TryParse(val, out _))
+        {
+            fertHi = int.Parse(val);
+            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+        }
+    }
+
+    public bool GetCountCorners() { return countCorners; }
+    public void SetCountCorners(bool state)
+    {
+        countCorners = state;
+        if (countCorners)
+        {
+            cornersToggle.GetComponent<Image>().color = Color.gray;
+        }
+        else
+        {
+            cornersToggle.GetComponent<Image>().color = Color.white;
+        }
+        autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+    }
+    public void ToggleCountCorners()
+    {
+        SetCountCorners(!countCorners);
+    }
+
+    public bool GetDisplayCoords() { return displayCoords; }
+    public void SetDisplayCoords(bool state)
+    {
+        displayCoords = state;
+        if (displayCoords)
+        {
+            coordsToggle.GetComponent<Image>().color = Color.gray;
+        }
+        else
+        {
+            coordsToggle.GetComponent<Image>().color = Color.white;
+        }
+
+        foreach (TriController tri in triList)
+        {
+            tri.setTextState(displayCoords);
+        }
+
+    }
+    public void ToggleDisplayCoords()
+    {
+        SetDisplayCoords(!displayCoords);
+    }
+
+    public void ResetActiveTriList()
+    {
+        while (activeTris.Count > 0) activeTris[0].setStateFalse();
+    }
+
+    public void ResetStepCounter()
+    {
+        stepCount = 0;
+        stepperText.text = "Steps: " + stepCount;
+
+        partialCheckpoint = new Stack<List<TriController>>();
+    }
+
+
+
+    // General Get/Set stack
     public List<TriController> GetList() { return triList; }
 
     public void SetList(List<TriController> newList) { triList = newList; }
@@ -63,6 +180,7 @@ public class TriManager : MonoBehaviour
                 currentTriUp.GetComponent<RectTransform>().localScale = currentTriUp.GetComponent<RectTransform>().localScale / rowNumber;
                 currentTriUp.GetComponent<RectTransform>().localPosition = new Vector3((100 * j) - (100 * i / 2), (-86.6f * i) + ((rowNumber - 1) * 43.3f), 0) * scaleFactor; //-86.6 ~= (100sqrt3)/2 (triangle height)
                 TriController upController = currentTriUp.GetComponent<TriController>();
+                upController.setTextState(displayCoords);
                 upController.setJ(i-j);
                 upController.setK(j);
                 triList.Add(upController);
@@ -81,6 +199,7 @@ public class TriManager : MonoBehaviour
                     currentTriDown.GetComponent<RectTransform>().localScale = currentTriDown.GetComponent<RectTransform>().localScale / rowNumber;
                     currentTriDown.GetComponent<RectTransform>().localPosition = new Vector3((100 * j) - (100 * i / 2) + 50, (-86.6f * i) + ((rowNumber-1) * 43.3f), 0) * scaleFactor;
                     downController = currentTriDown.GetComponent<TriController>();
+                    downController.setTextState(displayCoords);
                     downController.setJ(i-j-1);
                     downController.setK(j);
                     triList.Add(downController);
@@ -187,14 +306,14 @@ public class TriManager : MonoBehaviour
 
     private void StepBackward()
     {
-        if(stepCount > 0)
+        if (stepCount > 0)
         {
 
             stepCount--;
             stepperText.text = "Steps: " + stepCount;
 
             //clear grid
-            while(activeTris.Count > 0) activeTris[0].setStateFalse();
+            while (activeTris.Count > 0) activeTris[0].setStateFalse();
 
             //load tris
             List<TriController> trisToAdd = partialCheckpoint.Pop();

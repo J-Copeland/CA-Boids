@@ -8,8 +8,8 @@ public class TriController : MonoBehaviour
 {
     [SerializeField] private TriManager triManager;
     [SerializeField] public TextMeshProUGUI text;
+    [SerializeField] private int iCoord;
     [SerializeField] private int jCoord;
-    [SerializeField] private int kCoord;
     [SerializeField] private bool polarity;
     [SerializeField] private bool state = false;
     [SerializeField] private TriController[] adjTris;
@@ -28,11 +28,11 @@ public class TriController : MonoBehaviour
     }
 
 
-    public int getJ() { return jCoord; }
-    public void setJ(int newJ) { jCoord = newJ; text.text = jCoord + ", " + kCoord; }
+    public int getJ() { return iCoord; }
+    public void setJ(int newJ) { iCoord = newJ; text.text = iCoord + ", " + jCoord; }
 
-    public int getK() { return kCoord; }
-    public void setK(int newK) { kCoord = newK; text.text = jCoord + ", " + kCoord; }
+    public int getK() { return jCoord; }
+    public void setK(int newK) { jCoord = newK; text.text = iCoord + ", " + jCoord; }
 
     public bool getPolarity() { return polarity; }
     public void setPolarity(bool newVal) { polarity = newVal; }
@@ -51,6 +51,9 @@ public class TriController : MonoBehaviour
 
     public TriController[] getCornerAdjTris() { return cornerAdjTris; }
     public void setCornerAdjTris(TriController[] cornerAdjTris) { this.cornerAdjTris = cornerAdjTris; }
+
+    public bool getTextState() { return text.IsActive();  }
+    public void setTextState(bool state) { text.gameObject.SetActive(state);  }
 
 
 
