@@ -12,7 +12,9 @@ public class TriManager : MonoBehaviour
     [SerializeField] private GameObject triUpPrefab;
     [SerializeField] private GameObject triDownPrefab;
     [SerializeField] private List<TriController> triList;
-    [SerializeField] private GameObject canvas;
+    [SerializeField] private GameObject visualPanelUiObj;
+    [SerializeField] private TextMeshProUGUI visualPanelButtonText;
+    [SerializeField] private BoidManager boidManager;
 
     //Unity specified data
     [SerializeField] private int rowNumber;
@@ -21,6 +23,7 @@ public class TriManager : MonoBehaviour
     [SerializeField] private GameObject envLoObject, envHiObject, fertLoObject, fertHiObject, cornersToggle, coordsToggle;
     private AutManager autManager = new AutManager(envLo, envHi, fertLo, fertHi, countCorners); //logical upper integer limit of 12 if true, 3 if false
     [SerializeField] private bool displayCoords = true;
+    [SerializeField] private string unusedButtonSymbol;
 
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
@@ -34,8 +37,10 @@ public class TriManager : MonoBehaviour
     {
         triUpPrefab.GetComponent<TriController>().setTriManager(this);
         triDownPrefab.GetComponent<TriController>().setTriManager(this);
-        Transform triHolder = canvas.transform.GetChild(1).GetChild(0).GetChild(0).GetComponent<Transform>();
+        Transform triHolder = visualPanelUiObj.transform.GetChild(0).GetChild(0).GetComponent<Transform>();
         GenerateGrid(triHolder);
+
+        boidManager.setBoidRefs(triHolder.gameObject);
 
         foreach (TriController tri in triList)
         {
@@ -157,6 +162,15 @@ public class TriManager : MonoBehaviour
         stepperText.text = "Steps: " + stepCount;
 
         partialCheckpoint = new Stack<List<TriController>>();
+    }
+
+    public void ToggleVisualPanel()
+    {
+        visualPanelUiObj.SetActive(!visualPanelUiObj.activeSelf);
+
+        string tempHolder = visualPanelButtonText.text;
+        visualPanelButtonText.text = unusedButtonSymbol;
+        unusedButtonSymbol = tempHolder;
     }
 
 
