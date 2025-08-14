@@ -23,8 +23,6 @@ public class BoidScript : MonoBehaviour
     [SerializeField] private float rotationSpeed = 50f;
     [SerializeField] private float movementSpeed = 2;
 
-    [SerializeField] private bool canMove = true; // FOR TESTING -- DELETE AFTERWARDS
-
     void Start()
     {
         lr = gameObject.GetComponent<LineRenderer>();
@@ -44,16 +42,14 @@ public class BoidScript : MonoBehaviour
 
         // if line renderer should be active - call function to draw to it
         if (debugMode != 0)
-        DrawToLineRenderer(targetRotation, boidsScanned, targetInfo);
+            DrawToLineRenderer(targetRotation, boidsScanned, targetInfo);
 
+        // if boid needs to rotate - do it
+        if(boidsScanned)
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
 
-        if (canMove)   // IF STATEMENT FOR TESTING -- DELETE AFTERWARDS
-        {
-            // only change direction if boids have been scanned
-            if(boidsScanned)
-                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
-            transform.position += transform.forward * Time.deltaTime * movementSpeed;
-        }
+        // move forwards according to speed
+        transform.position += transform.forward * Time.deltaTime * movementSpeed;
         
     }
 
@@ -63,19 +59,16 @@ public class BoidScript : MonoBehaviour
 
         Vector3 separationTargetVector = new Vector3();
         int separationTargetCount = 0;
-        Quaternion separationTargetDir = Quaternion.identity;
 
-        Vector3 alignmentTargetVector = new Vector3(); //was alignmentTargetRotation
+        Vector3 alignmentTargetVector = new Vector3();
         int alignmentTargetCount = 0;
-        Quaternion alignmentTargetDir = Quaternion.identity;
 
         Vector3 cohesionTargetVector = new Vector3();
         int cohesionTargetCount = 0;
-        Quaternion cohesionTargetDir = Quaternion.identity;
 
-        float targetAngle = 0f;
         int activeRuleCount = 0;
-        Vector3 targetAxis = new Vector3(); ;
+        float targetAngle = 0f;
+        Vector3 targetAxis = new Vector3();
         Quaternion targetRotation;
 
 
@@ -85,95 +78,26 @@ public class BoidScript : MonoBehaviour
             Transform targetTransform = boid.gameObject.GetComponent<Transform>();
             float distance = (targetTransform.position - transform.position).magnitude;
 
-            if (distance < separationDist)
-            {
-                separationTargetCount++;
-                separationTargetVector += targetTransform.localPosition;
-            }
-
-            if (distance < alignmentDist)
-            {
-                alignmentTargetCount++;
-                alignmentTargetVector += targetTransform.forward;
-            }
-
-            if (distance < cohesionDist)
-            {
-                cohesionTargetCount++;
-                cohesionTargetVector += targetTransform.localPosition;
-            }
-
-
-        }
-
-        //inverse quaternion to face away, creates a quaternion that looks towards the position
-        if (separationTargetCount != 0)
-        {
-            separationTargetVector /= separationTargetCount;
-
-            Vector3 posDiff = (separationTargetVector - transform.position).normalized;
-            if (posDiff != Vector3.zero)
-            {
-                Quaternion pointToTarget = Quaternion.LookRotation(posDiff * -1);
-                separationTargetDir = Quaternion.Slerp(transform.rotation, pointToTarget, separationSpeed);
-
-                separationTargetDir.ToAngleAxis(out float angle, out Vector3 axis);
-                if (angle != 0)
-                {
-                    targetAngle += angle;
-                    targetAxis += axis;
-                }
-
-                activeRuleCount++;
-            }
-            boidsScanned = true;
-
-            
-        }
-
-        //changes sum of all alignment directions to average
-        if (alignmentTargetCount != 0)
-        {
-            alignmentTargetVector /= alignmentTargetCount;
-
-            Quaternion pointToTarget = Quaternion.LookRotation(alignmentTargetVector);
-            alignmentTargetDir = Quaternion.Slerp(transform.rotation, pointToTarget, alignmentSpeed);
-
-            alignmentTargetDir.ToAngleAxis(out float angle, out Vector3 axis);
-            if(angle != 0)
-            {
-                targetAngle += angle;
-                targetAxis += axis;
-            }
-            
-
-            activeRuleCount++;
-
-            boidsScanned = true;
+            GetRelevantBoids(distance < separationDist, ref separationTargetCount, ref separationTargetVector, targetTransform);
+            GetRelevantBoids(distance < alignmentDist, ref alignmentTargetCount, ref alignmentTargetVector, targetTransform);
+            GetRelevantBoids(distance < cohesionDist, ref cohesionTargetCount, ref cohesionTargetVector, targetTransform);
         }
 
 
-        //changes sum of all boids positions to average, creates a quaternion that looks towards the position
-        if (cohesionTargetCount != 0)
-        {
-            cohesionTargetVector /= cohesionTargetCount;
-            Vector3 posDiff = (cohesionTargetVector - transform.position).normalized;
-            if(posDiff != Vector3.zero)
-            {
-                Quaternion pointToTarget = Quaternion.LookRotation(posDiff);
-                cohesionTargetDir = Quaternion.Slerp(transform.rotation, pointToTarget, cohesionSpeed);
+        BoidRule separationRule = new BoidRule(transform, separationSpeed, true, false); //uses posDiff, direction is backwards
+        BoidRule alignmentRule = new BoidRule(transform, alignmentSpeed, false);         //does not use posDiff
+        BoidRule cohesionRule = new BoidRule(transform, cohesionSpeed, true, true);      //uses posDiff, direction is forwards
 
-                cohesionTargetDir.ToAngleAxis(out float angle, out Vector3 axis);
-                if (angle != 0)
-                {
-                    targetAngle += angle;
-                    targetAxis += axis;
-                }
 
-                activeRuleCount++;
-            }
-            boidsScanned = true;
-        }
+        Quaternion separationTargetDir = separationRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
+        separationRule.OutputDirection(separationTargetDir, ref targetAngle, ref targetAxis);
+
+        Quaternion alignmentTargetDir = alignmentRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
+        separationRule.OutputDirection(alignmentTargetDir, ref targetAngle, ref targetAxis);
+
+        Quaternion cohesionTargetDir = cohesionRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
+        separationRule.OutputDirection(cohesionTargetDir, ref targetAngle, ref targetAxis);
+
 
         // set var for debug mode 3
         TargetInfo targetInfo = null;
@@ -189,6 +113,14 @@ public class BoidScript : MonoBehaviour
         return (targetRotation, boidsScanned, targetInfo);
     }
 
+    public void GetRelevantBoids(bool isWithinDist, ref int targetCount, ref Vector3 targetVector, Transform targetTransform)
+    {
+        if (isWithinDist)
+        {
+            targetCount++;
+            targetVector += targetTransform.localPosition;
+        }
+    }
 
     public (Quaternion, float, Vector3) CalculateTargetForRule(Vector3 lookDirection, float speed)
     {
@@ -207,11 +139,8 @@ public class BoidScript : MonoBehaviour
         {
             if (boidsScanned)
             {
-                //targetRotation.ToAngleAxis(out float angle, out Vector3 axis);
                 lr.SetPosition(0, transform.position);
                 lr.SetPosition(1, transform.position + (targetRotation * Vector3.forward) * 2);
-                //lr.SetPosition(0, transform.position - axis * 2);
-                //lr.SetPosition(1, transform.position + axis * 2);
             }
             else
             {
@@ -249,7 +178,7 @@ public class BoidScript : MonoBehaviour
                 lr.SetPosition(1, transform.position); 
             }
 
-            // color-gradient separation lines
+            // gradient splitting lines
             lr.SetPosition(2, transform.position + transform.forward * 0.25f);
             lr.SetPosition(3, transform.position);
 
@@ -263,7 +192,7 @@ public class BoidScript : MonoBehaviour
                 lr.SetPosition(5, transform.position);
             }
 
-            // color-gradient separation lines
+            // gradient splitting lines
             lr.SetPosition(6, transform.position + transform.forward * 0.25f);
             lr.SetPosition(7, transform.position);
 
@@ -387,4 +316,62 @@ public class TargetInfo
         cc = cohesionCount;
     }
 
+}
+
+public class BoidRule
+{
+    Transform transform;
+    bool hasPosDiff;
+    float isDirectionForwards;
+    float speed;
+
+    public BoidRule(Transform transform, float speed, bool hasPosDiff, bool isDirectionForwards = true)
+    {
+        this.transform = transform;
+        this.speed = speed;
+        this.hasPosDiff = hasPosDiff;
+        this.isDirectionForwards = (isDirectionForwards == true ? 1 : -1);
+    }
+
+    public Quaternion GetDirection(int targetCount, Vector3 targetVector, ref int activeRuleCount, ref bool boidsScanned)
+    {
+        Quaternion targetDir = Quaternion.identity; // <-- return var
+
+        if (targetCount != 0)
+        {
+            targetVector /= targetCount;
+
+            if (hasPosDiff)
+            {
+                Vector3 posDiff = (targetVector - transform.position).normalized;
+                if (posDiff != Vector3.zero)
+                {
+                    targetDir = CalculateDirection(posDiff * isDirectionForwards, transform, speed);
+                    activeRuleCount++;
+                }
+            } else
+            {
+                targetDir = CalculateDirection(targetVector, transform, speed);
+                activeRuleCount++;
+            }
+            boidsScanned = true;
+        }
+        return targetDir;
+    }
+
+    public Quaternion CalculateDirection(Vector3 lookTarget, Transform transform, float speed)
+    {
+        Quaternion pointToTarget = Quaternion.LookRotation(lookTarget);
+        return Quaternion.Slerp(transform.rotation, pointToTarget, speed);
+    }
+
+    public void OutputDirection(Quaternion targetDir, ref float targetAngle, ref Vector3 targetAxis)
+    {
+        targetDir.ToAngleAxis(out float angle, out Vector3 axis);
+        if (angle != 0)
+        {
+            targetAngle += angle;
+            targetAxis += axis;
+        }
+    }
 }
