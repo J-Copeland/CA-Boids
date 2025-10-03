@@ -21,14 +21,14 @@ public class TriManager : MonoBehaviour
     private static int envLo = 3, envHi = 4, fertLo = 4, fertHi = 5;
     private static bool countCorners = true;
     [SerializeField] private GameObject envLoObject, envHiObject, fertLoObject, fertHiObject, cornersToggle, coordsToggle;
-    private AutManager autManager = new AutManager(envLo, envHi, fertLo, fertHi, countCorners); //logical upper integer limit of 12 if true, 3 if false
+    //private AutManager autManager = new(envLo, envHi, fertLo, fertHi, countCorners); //logical upper integer limit of 12 if true, 3 if false
     [SerializeField] private bool displayCoords = true;
     [SerializeField] private string unusedButtonSymbol;
 
     //Stepping Variables
     [SerializeField] private TextMeshProUGUI stepperText;
-    private Stack<List<TriController>> partialCheckpoint = new Stack<List<TriController>>();
-    private Stack<List<TriController>> partialRedoCheckpoint = new Stack<List<TriController>>();
+    private Stack<List<TriController>> partialCheckpoint = new();
+    private Stack<List<TriController>> partialRedoCheckpoint = new();
     [SerializeField] private List<TriController> activeTris;
     private int stepCount = 0;
 
@@ -39,8 +39,6 @@ public class TriManager : MonoBehaviour
         triDownPrefab.GetComponent<TriController>().setTriManager(this);
         Transform triHolder = visualPanelUiObj.transform.GetChild(0).GetChild(0).GetComponent<Transform>();
         GenerateGrid(triHolder);
-
-        boidManager.setBoidRefs(triHolder.gameObject);
 
         foreach (TriController tri in triList)
         {
@@ -58,8 +56,11 @@ public class TriManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.K)) StepForward();
-        if (Input.GetKeyDown(KeyCode.J)) StepBackward();
+        if (visualPanelUiObj.activeInHierarchy)
+        {
+            if (Input.GetKeyDown(KeyCode.K)) StepForward();
+            if (Input.GetKeyDown(KeyCode.J)) StepBackward();
+        }
     }
 
 
@@ -71,7 +72,7 @@ public class TriManager : MonoBehaviour
         if (int.TryParse(val, out _))
         {
             envLo = int.Parse(val);
-            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+            boidManager.SetAutManagerRules(envLo, envHi, fertLo, fertHi, countCorners);
         }
     }
 
@@ -82,7 +83,7 @@ public class TriManager : MonoBehaviour
         if (int.TryParse(val, out _))
         {
             envHi = int.Parse(val);
-            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+            boidManager.SetAutManagerRules(envLo, envHi, fertLo, fertHi, countCorners);
         }
     }
 
@@ -93,7 +94,7 @@ public class TriManager : MonoBehaviour
         if (int.TryParse(val, out _))
         {
             fertLo = int.Parse(val);
-            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+            boidManager.SetAutManagerRules(envLo, envHi, fertLo, fertHi, countCorners);
         }
     }
 
@@ -104,7 +105,7 @@ public class TriManager : MonoBehaviour
         if (int.TryParse(val, out _))
         {
             fertHi = int.Parse(val);
-            autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+            boidManager.SetAutManagerRules(envLo, envHi, fertLo, fertHi, countCorners);
         }
     }
 
@@ -120,7 +121,7 @@ public class TriManager : MonoBehaviour
         {
             cornersToggle.GetComponent<Image>().color = Color.white;
         }
-        autManager.SetRules(envLo, envHi, fertLo, fertHi, countCorners);
+        boidManager.SetAutManagerRules(envLo, envHi, fertLo, fertHi, countCorners);
     }
     public void ToggleCountCorners()
     {
@@ -178,7 +179,7 @@ public class TriManager : MonoBehaviour
     // General Get/Set stack
     public List<TriController> GetList() { return triList; }
 
-    public void SetList(List<TriController> newList) { triList = newList; }
+    public void SetList(TriController[] newArr) { triList = newArr.ToList(); }
 
 
     private void GenerateGrid(Transform holder)
@@ -234,7 +235,7 @@ public class TriManager : MonoBehaviour
     //creates adjacencies both ways - couldn't think of a reason to only have one way
     private void CreateAdjacencies(TriController tri1, TriController tri2)
     {
-        List<TriController> currentAdj = new List<TriController>(tri1.getAdjTris());
+        List<TriController> currentAdj = new(tri1.getAdjTris());
         currentAdj.Add(tri2);
         tri1.setAdjTris(currentAdj.ToArray());
 
@@ -247,7 +248,7 @@ public class TriManager : MonoBehaviour
     private void CreateCornerAdjacencies(TriController tri)
     {
         //part 1
-        List<TriController> cornerAdjacencies = new List<TriController>();
+        List<TriController> cornerAdjacencies = new();
         TriController[] sideAdjacencies = tri.getAdjTris();
         for(int i = 0; i < sideAdjacencies.Length; i++)
         {
@@ -260,8 +261,8 @@ public class TriManager : MonoBehaviour
         cornerAdjacencies = cornerAdjacencies.Distinct().ToList();
         
         //new list for part 2
-        List<TriController> secondaryCornerAdjacencies = new List<TriController>();
-        Dictionary<TriController, int> cornerAdjCounter = new Dictionary<TriController, int>();
+        List<TriController> secondaryCornerAdjacencies = new();
+        Dictionary<TriController, int> cornerAdjCounter = new();
 
         foreach(TriController adjTri in cornerAdjacencies)
         {
@@ -287,15 +288,39 @@ public class TriManager : MonoBehaviour
         tri.setCornerAdjTris(cornerAdjacencies.ToArray());
     }
 
+    public List<TriController> getTriList()
+    {
+        return triList;
+    }
+
     public void AddTri(TriController newTri)
     {
-        if(!activeTris.Contains(newTri)) activeTris.Add(newTri);
+        if (!activeTris.Contains(newTri))
+        {
+            activeTris.Add(newTri);
+            boidManager.UpdateSelectedBoidTris(activeTris);
+        }
     }
 
 
     public void RemoveTri(TriController newTri)
     {
         activeTris.Remove(newTri);
+        boidManager.UpdateSelectedBoidTris(activeTris);
+    }
+
+    public List<TriController> getActiveTris()
+    {
+        return activeTris;
+    }
+    public void setActiveTris(List<TriController> activeTris)
+    {
+        ResetActiveTriList();
+        foreach(TriController tri in activeTris)
+        {
+            tri.setStateTrue();
+        }
+        boidManager.UpdateSelectedBoidTris(activeTris);
     }
 
 
@@ -306,7 +331,7 @@ public class TriManager : MonoBehaviour
         stepCount++;
         stepperText.text = "Steps: " + stepCount;
 
-        List<TriController> trisToAdd = autManager.Step(triList, activeTris);
+        List<TriController> trisToAdd = boidManager.StepCellAut(triList, activeTris);
         TriController[] trisToRemove = activeTris.ToArray();
 
         //push changes to undo stack

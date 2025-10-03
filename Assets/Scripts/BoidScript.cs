@@ -22,12 +22,25 @@ public class BoidScript : MonoBehaviour
     [SerializeField] private float cohesionSpeed = 1;
     [SerializeField] private float rotationSpeed = 50f;
     [SerializeField] private float movementSpeed = 2;
+    [SerializeField] private float moveableFieldSize = 25;
+
+    [SerializeField] private TriController[] activeTris;
+    [SerializeField] private int seed;
+    private byte[] rngBitArr = new byte[100];
+
+    [SerializeField] private bool canMove = false;
 
     void Start()
     {
         lr = gameObject.GetComponent<LineRenderer>();
         lr.material = new Material(Shader.Find("Sprites/Default"));
         ConfigureLineRenderer();
+
+        Random.InitState(seed);
+        for(int i = 0; i < rngBitArr.Length; i++)
+        {
+            rngBitArr[i] = ((byte)Random.Range(0, 2));
+        }
     }
 
     void Update()
@@ -44,31 +57,38 @@ public class BoidScript : MonoBehaviour
         if (debugMode != 0)
             DrawToLineRenderer(targetRotation, boidsScanned, targetInfo);
 
-        // if boid needs to rotate - do it
-        if(boidsScanned)
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
 
-        // move forwards according to speed
-        transform.position += transform.forward * Time.deltaTime * movementSpeed;
-        
+        if (canMove)
+        {
+            // if boid needs to rotate - do it
+            if (boidsScanned)
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
+
+            // move forwards according to speed
+            transform.position += Time.deltaTime * movementSpeed * transform.forward;
+
+            HandleBoundaries();
+        }
+
+
     }
 
     public (Quaternion, bool, TargetInfo) CalculateTargetRotation()
     {
         bool boidsScanned = false;
 
-        Vector3 separationTargetVector = new Vector3();
+        Vector3 separationTargetVector = new();
         int separationTargetCount = 0;
 
-        Vector3 alignmentTargetVector = new Vector3();
+        Vector3 alignmentTargetVector = new();
         int alignmentTargetCount = 0;
 
-        Vector3 cohesionTargetVector = new Vector3();
+        Vector3 cohesionTargetVector = new();
         int cohesionTargetCount = 0;
 
         int activeRuleCount = 0;
         float targetAngle = 0f;
-        Vector3 targetAxis = new Vector3();
+        Vector3 targetAxis = new();
         Quaternion targetRotation;
 
 
@@ -78,32 +98,32 @@ public class BoidScript : MonoBehaviour
             Transform targetTransform = boid.gameObject.GetComponent<Transform>();
             float distance = (targetTransform.position - transform.position).magnitude;
 
-            GetRelevantBoids(distance < separationDist, ref separationTargetCount, ref separationTargetVector, targetTransform);
-            GetRelevantBoids(distance < alignmentDist, ref alignmentTargetCount, ref alignmentTargetVector, targetTransform);
-            GetRelevantBoids(distance < cohesionDist, ref cohesionTargetCount, ref cohesionTargetVector, targetTransform);
+            GetRelevantBoids(distance < separationDist, true, ref separationTargetCount, ref separationTargetVector, targetTransform);
+            GetRelevantBoids(distance < alignmentDist, false, ref alignmentTargetCount, ref alignmentTargetVector, targetTransform);
+            GetRelevantBoids(distance < cohesionDist, true, ref cohesionTargetCount, ref cohesionTargetVector, targetTransform);
         }
 
 
-        BoidRule separationRule = new BoidRule(transform, separationSpeed, true, false); //uses posDiff, direction is backwards
-        BoidRule alignmentRule = new BoidRule(transform, alignmentSpeed, false);         //does not use posDiff
-        BoidRule cohesionRule = new BoidRule(transform, cohesionSpeed, true, true);      //uses posDiff, direction is forwards
+        BoidRule separationRule = new(transform, separationSpeed, true, false); //uses posDiff, direction is backwards
+        BoidRule alignmentRule = new(transform, alignmentSpeed, false);         //does not use posDiff
+        BoidRule cohesionRule = new(transform, cohesionSpeed, true, true);      //uses posDiff, direction is forwards
 
 
         Quaternion separationTargetDir = separationRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
         separationRule.OutputDirection(separationTargetDir, ref targetAngle, ref targetAxis);
 
-        Quaternion alignmentTargetDir = alignmentRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
-        separationRule.OutputDirection(alignmentTargetDir, ref targetAngle, ref targetAxis);
+        Quaternion alignmentTargetDir = alignmentRule.GetDirection(alignmentTargetCount, alignmentTargetVector, ref activeRuleCount, ref boidsScanned);
+        alignmentRule.OutputDirection(alignmentTargetDir, ref targetAngle, ref targetAxis);
 
-        Quaternion cohesionTargetDir = cohesionRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
-        separationRule.OutputDirection(cohesionTargetDir, ref targetAngle, ref targetAxis);
-
+        Quaternion cohesionTargetDir = cohesionRule.GetDirection(cohesionTargetCount, cohesionTargetVector, ref activeRuleCount, ref boidsScanned);
+        cohesionRule.OutputDirection(cohesionTargetDir, ref targetAngle, ref targetAxis);
 
         // set var for debug mode 3
         TargetInfo targetInfo = null;
         if (debugMode == 3)
             targetInfo = new TargetInfo(separationTargetDir, alignmentTargetDir, cohesionTargetDir, separationTargetCount, alignmentTargetCount, cohesionTargetCount);
 
+        // FIX BELOW!!!
         // combine vectors from all behaviours
         targetAxis.Normalize();
         targetAngle /= activeRuleCount;
@@ -113,12 +133,13 @@ public class BoidScript : MonoBehaviour
         return (targetRotation, boidsScanned, targetInfo);
     }
 
-    public void GetRelevantBoids(bool isWithinDist, ref int targetCount, ref Vector3 targetVector, Transform targetTransform)
+    public void GetRelevantBoids(bool isWithinDist, bool getPosNotRot, ref int targetCount, ref Vector3 targetVector, Transform targetTransform)
     {
         if (isWithinDist)
         {
             targetCount++;
-            targetVector += targetTransform.localPosition;
+            if (getPosNotRot) targetVector += targetTransform.localPosition;
+            else targetVector += targetTransform.forward;
         }
     }
 
@@ -135,7 +156,7 @@ public class BoidScript : MonoBehaviour
     public void DrawToLineRenderer(Quaternion targetRotation, bool boidsScanned, TargetInfo targetInfo)
     {
         //OPTION 1  - SHOW TARGET DIRECTION
-        if(debugMode == 1)
+        if (debugMode == 1)
         {
             if (boidsScanned)
             {
@@ -166,16 +187,16 @@ public class BoidScript : MonoBehaviour
         else if (debugMode == 3)
         {
 
-            lr.colorGradient = CalculateTargetLinesGradient(targetInfo.sc>0, targetInfo.ac>0, targetInfo.cc>0);
+            lr.colorGradient = CalculateTargetLinesGradient(targetInfo.sc > 0, targetInfo.ac > 0, targetInfo.cc > 0);
 
             if (targetInfo.sc > 0) // separation
             {
                 lr.SetPosition(0, transform.position + (targetInfo.sd * Vector3.forward) * separationDist);
                 lr.SetPosition(1, transform.position);
             }
-            else { 
-                lr.SetPosition(0, transform.position); 
-                lr.SetPosition(1, transform.position); 
+            else {
+                lr.SetPosition(0, transform.position);
+                lr.SetPosition(1, transform.position);
             }
 
             // gradient splitting lines
@@ -187,7 +208,7 @@ public class BoidScript : MonoBehaviour
                 lr.SetPosition(4, transform.position + (targetInfo.ad * Vector3.forward) * alignmentDist);
                 lr.SetPosition(5, transform.position);
             }
-            else { 
+            else {
                 lr.SetPosition(4, transform.position);
                 lr.SetPosition(5, transform.position);
             }
@@ -198,7 +219,7 @@ public class BoidScript : MonoBehaviour
 
             if (targetInfo.cc > 0) // cohesion
             {
-                
+
                 lr.SetPosition(8, transform.position + (targetInfo.cd * Vector3.forward) * cohesionDist);
             }
             else {
@@ -209,7 +230,7 @@ public class BoidScript : MonoBehaviour
 
     public Gradient CalculateTargetLinesGradient(bool separationValid, bool alignmentValid, bool cohesionValid)
     {
-        Gradient grad = new Gradient();
+        Gradient grad = new();
         float separatorLength = 1f;
 
         float sepVal = (separationValid ? separationDist : 0);
@@ -232,12 +253,12 @@ public class BoidScript : MonoBehaviour
 
     public Gradient GenerateRedGradient()
     {
-        Gradient gradient = new Gradient();
+        Gradient gradient = new();
 
         GradientColorKey[] colKey = { new GradientColorKey(Color.red, 0.0f), new GradientColorKey(Color.red, 1.0f) };
         GradientAlphaKey[] alphKey = { new GradientAlphaKey(1.0f, 0.0f), new GradientAlphaKey(1.0f, 1.0f) };
         gradient.SetKeys(colKey, alphKey);
-        
+
         return gradient;
     }
 
@@ -250,6 +271,7 @@ public class BoidScript : MonoBehaviour
                 break;
 
             case 1:
+                lr.enabled = true;
                 lr.positionCount = 2;
                 lr.startWidth = 0.2f;
                 lr.endWidth = 0.2f;
@@ -257,6 +279,7 @@ public class BoidScript : MonoBehaviour
                 break;
 
             case 2:
+                lr.enabled = true;
                 lr.positionCount = 10;
                 lr.startWidth = 0.2f;
                 lr.endWidth = 0.2f;
@@ -264,6 +287,7 @@ public class BoidScript : MonoBehaviour
                 break;
 
             case 3:
+                lr.enabled = true;
                 lr.positionCount = 9;
                 lr.startWidth = 0.2f;
                 lr.endWidth = 0.2f;
@@ -287,6 +311,26 @@ public class BoidScript : MonoBehaviour
         return false;
     }
 
+    public void HandleBoundaries()
+    {
+        if (CheckBoundary(transform.position.x, moveableFieldSize, new Vector3(moveableFieldSize, 0, 0)))
+            transform.position = new Vector3(moveableFieldSize * -Mathf.Sign(transform.position.x), transform.position.y, transform.position.z);
+
+        if (CheckBoundary(transform.position.y, moveableFieldSize, new Vector3(0, moveableFieldSize, 0)))
+            transform.position = new Vector3(transform.position.x, moveableFieldSize * -Mathf.Sign(transform.position.y), transform.position.z);
+
+        if (CheckBoundary(transform.position.z, moveableFieldSize, new Vector3(0, 0, transform.position.z)))
+            transform.position = new Vector3(transform.position.x, transform.position.y, moveableFieldSize * -Mathf.Sign(transform.position.z));
+    }
+
+    public bool CheckBoundary(float posVal, float bound, Vector3 boundVector)
+    {
+        if (
+           (Mathf.Min(posVal, bound) != posVal && Vector3.Dot(-boundVector, transform.forward) < 0) || //positive boundary check
+           (Mathf.Max(posVal, -bound) != posVal && Vector3.Dot(boundVector, transform.forward) < 0)    //negative boundary check
+        ) return true;
+        else return false;
+    }
 
 
     // Getters & Setters block
@@ -298,6 +342,15 @@ public class BoidScript : MonoBehaviour
 
     public int getDebugMode() { return debugMode; }
     public void setDebugMode(int debugMode) { this.debugMode = debugMode; ConfigureLineRenderer(); }
+
+    public TriController[] getActiveTris() { return activeTris; }
+    public void setActiveTris(TriController[] activeTris) { this.activeTris = activeTris; }
+
+    public int getSeed() { return seed; }
+    public void setSeed(int seed) { this.seed = seed; }
+
+    public byte[] getRngBitArr() { return rngBitArr;  }
+    public void setRngBitArr(byte[] rngBitArr) { this.rngBitArr = rngBitArr; }
 }
 
 // Used to store info about calculated target directions

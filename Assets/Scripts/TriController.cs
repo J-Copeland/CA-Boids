@@ -11,6 +11,7 @@ public class TriController : MonoBehaviour
     [SerializeField] private int iCoord;
     [SerializeField] private int jCoord;
     [SerializeField] private bool polarity;
+    [SerializeField] private bool quadrant;
     [SerializeField] private bool state = false;
     [SerializeField] private TriController[] adjTris;
     [SerializeField] private TriController[] cornerAdjTris;
@@ -23,7 +24,7 @@ public class TriController : MonoBehaviour
         image = GetComponent<Image>();
         image.color = Color.white;
         image.alphaHitTestMinimumThreshold = alphaThreshold;
-        text = this.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+        text = this.GetComponentInChildren<TextMeshProUGUI>();
         
     }
 

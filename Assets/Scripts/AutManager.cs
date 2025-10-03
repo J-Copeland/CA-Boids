@@ -34,7 +34,7 @@ public class AutManager
 
     private List<TriController> CornerAdjacentGrowth(List<TriController> allTris, List<TriController> activeTris)
     {
-        List<TriController> toAdd = new List<TriController>();
+        List<TriController> toAdd = new();
         foreach (TriController tri in activeTris)
         {
             toAdd.AddRange(tri.getCornerAdjTris());
@@ -42,40 +42,19 @@ public class AutManager
         return toAdd.Distinct().ToList();
     }
 
-    private List<TriController> OriginalAlgorithm(List<TriController> allTris, List<TriController> activeTris)
+    private List<TriController> ModularCellAut(List<TriController> allTris, List<TriController> activeTris) //update to use activeTris instead of checking individual tri state -> should only be used for displaying on grid
     {
-        List<TriController> toAdd = new List<TriController>();
-
-        for (int i = 0; i < allTris.Count; i++)
-        {
-            int activeAdjs = 0;
-            for (int j = 0; j < allTris[i].getAdjTris().Length; j++)
-            {
-                if (allTris[i].getAdjTris()[j].getState()) activeAdjs++;
-            }
-
-            if (activeAdjs >= 2)
-            {
-                toAdd.Add(allTris[i]);
-            }
-        }
-
-        return toAdd;
-    }
-
-    private List<TriController> ModularCellAut(List<TriController> allTris, List<TriController> activeTris)
-    {
-        List<TriController> toAdd = new List<TriController>();
+        List<TriController> toAdd = new();
 
         if(cornerAdjacencies == false)
         {
-            for (int i = 0; i < allTris.Count; i++)
+
+            foreach(TriController currentTri in allTris)
             {
-                TriController currentTri = allTris[i];
                 int activeAdjs = 0;
                 for (int j = 0; j < currentTri.getAdjTris().Length; j++)
                 {
-                    if (currentTri.getAdjTris()[j].getState()) activeAdjs++;
+                    if (activeTris.Contains(currentTri.getAdjTris()[j])) activeAdjs++;
                 }
 
                 if (currentTri.getState() == false && activeAdjs >= Fl && activeAdjs <= Fh) //fertility check
@@ -91,28 +70,28 @@ public class AutManager
         }
         else //repeated code, but only does cornerAdj. check once
         {
-            for (int i = 0; i < allTris.Count; i++)
+            foreach (TriController currentTri in allTris)
             {
-                TriController currentTri = allTris[i];
                 int activeAdjs = 0;
                 for (int j = 0; j < currentTri.getAdjTris().Length; j++)
                 {
-                    if (currentTri.getAdjTris()[j].getState()) activeAdjs++;
+                    if (activeTris.Contains(currentTri.getAdjTris()[j])) activeAdjs++;
                 }
 
                 for (int j = 0; j < currentTri.getCornerAdjTris().Length; j++)
                 {
-                    if (currentTri.getCornerAdjTris()[j].getState()) activeAdjs++;
+                    if (activeTris.Contains(currentTri.getCornerAdjTris()[j])) activeAdjs++;
                 }
 
-                bool currentState = currentTri.getState();
+
+                bool currentState = activeTris.Contains(currentTri);
 
 
                 if (currentState == false && activeAdjs >= Fl && activeAdjs <= Fh) //fertility check
                 {
                     toAdd.Add(currentTri);
                 }
-                
+
                 else if (currentState) //environmental survival check
                 {
                     if (activeAdjs >= El && activeAdjs <= Eh)
@@ -122,14 +101,16 @@ public class AutManager
                     //guard seperation allows for alive->dead tri processing here
                 }
             }
+                
         }
         
 
         return toAdd;
     }
-    
 
-    /*-USED PAPER:----------------------------------------------------------------
-    ---"Cellular Automata in the Triangular Tesselation" by Carter Bays (1994)----
-    ---FOR REFERENCE------------------------------------------------------------*/
+
+    /*-USED PAPER:---------------------------------------------------------------------------------------
+    ---"Cellular Automata in the Triangular Tesselation" by Carter Bays (1994)---------------------------
+    ---"Triangular Automata: The 256 Elementary Cellular Automata of the 2D Plane" by Paul Cousin(2023)--
+    ---FOR REFERENCE-----------------------------------------------------------------------------------*/
 }
