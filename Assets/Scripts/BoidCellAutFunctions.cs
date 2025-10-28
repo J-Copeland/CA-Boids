@@ -6,33 +6,47 @@ public class BoidCellAutFunctions
 {
 
     int checksPerTri = 10;
-    int triCount = 25;
     int rngStrCount = 100;
 
-    public List<TriController> PopulateCA(BoidScript boid, List<TriController> triList)
+    public List<TriController> PopulateCA(List<TriController> triList, byte[] bitArr, float[] urgencyArr)
     {
         List<TriController> activeTris = new();
 
-        byte[] bitArr = boid.getRngBitArr();
         for (int i = 0; i < triList.Count; i++)
         {
 
             int triTotal = 0;
             for(int j = 0; j < checksPerTri; j++)
             {
-                Debug.Log((i * checksPerTri + j) % rngStrCount);
                 if (bitArr[(i * checksPerTri + j) % rngStrCount] == 1)
                 {
                     triTotal++;
                 }
             }
-            if(triTotal >= 5)
+
+            int n = triList[i].getQuadrant() switch //pattern match to get urgency array index from quadrant
+            {
+                "top" => 0,
+                "left" => 1,
+                "right" => 2,
+                _ => 3
+            };
+
+            float boundaryVal = checksPerTri * urgencyArr[n];
+
+            if(triTotal >= boundaryVal)
             {
                 activeTris.Add(triList[i]);
             }
         }
-        boid.setActiveTris(activeTris.ToArray());
 
         return activeTris;
+    }
+
+    public float[] CountActiveTrisInQuadrants(List<TriController> activeTris, int triCount)
+    {
+
+
+        return new float[] {0f, 0f, 1f, 1f}; // currently split into {separation, alignment, cohesion, unused}
     }
 }

@@ -15,14 +15,18 @@ public class BoidScript : MonoBehaviour
     [SerializeField] private float fov = 2.25f;
     [SerializeField] private float sightDist = 5f;
     [SerializeField] private float separationDist = 2;
-    [SerializeField] private float separationSpeed = 1; //as a val [0-1]
+    [SerializeField] private float separationWeight = 1; //as a val [0-1]
     [SerializeField] private float alignmentDist = 5;
-    [SerializeField] private float alignmentSpeed = 1;
+    [SerializeField] private float alignmentWeight = 1;
     [SerializeField] private float cohesionDist = 10;
-    [SerializeField] private float cohesionSpeed = 1;
+    [SerializeField] private float cohesionWeight = 1;
     [SerializeField] private float rotationSpeed = 50f;
     [SerializeField] private float movementSpeed = 2;
     [SerializeField] private float moveableFieldSize = 25;
+
+    private BoidRule separationRule;
+    private BoidRule alignmentRule;
+    private BoidRule cohesionRule;
 
     [SerializeField] private TriController[] activeTris;
     [SerializeField] private int seed;
@@ -104,19 +108,25 @@ public class BoidScript : MonoBehaviour
         }
 
 
-        BoidRule separationRule = new(transform, separationSpeed, true, false); //uses posDiff, direction is backwards
-        BoidRule alignmentRule = new(transform, alignmentSpeed, false);         //does not use posDiff
-        BoidRule cohesionRule = new(transform, cohesionSpeed, true, true);      //uses posDiff, direction is forwards
+        separationRule = new(transform, separationWeight, true, false); //uses posDiff, direction is backwards
+        alignmentRule = new(transform, alignmentWeight, false);         //does not use posDiff
+        cohesionRule = new(transform, cohesionWeight, true, true);      //uses posDiff, direction is forwards
 
-
+        Vector3 buffer = new();
         Quaternion separationTargetDir = separationRule.GetDirection(separationTargetCount, separationTargetVector, ref activeRuleCount, ref boidsScanned);
-        separationRule.OutputDirection(separationTargetDir, ref targetAngle, ref targetAxis);
+        separationRule.OutputDirection(separationTargetDir.normalized, ref targetAngle, ref targetAxis);
+        Debug.Log("s" + (targetAxis - buffer));
+        buffer = targetAxis;
 
         Quaternion alignmentTargetDir = alignmentRule.GetDirection(alignmentTargetCount, alignmentTargetVector, ref activeRuleCount, ref boidsScanned);
-        alignmentRule.OutputDirection(alignmentTargetDir, ref targetAngle, ref targetAxis);
+        alignmentRule.OutputDirection(alignmentTargetDir.normalized, ref targetAngle, ref targetAxis);
+        Debug.Log("a " + (targetAxis - buffer));
+        buffer = targetAxis;
 
         Quaternion cohesionTargetDir = cohesionRule.GetDirection(cohesionTargetCount, cohesionTargetVector, ref activeRuleCount, ref boidsScanned);
-        cohesionRule.OutputDirection(cohesionTargetDir, ref targetAngle, ref targetAxis);
+        cohesionRule.OutputDirection(cohesionTargetDir.normalized, ref targetAngle, ref targetAxis);
+        Debug.Log("c " + (targetAxis - buffer));
+        buffer = targetAxis;
 
         // set var for debug mode 3
         TargetInfo targetInfo = null;
@@ -332,6 +342,11 @@ public class BoidScript : MonoBehaviour
         else return false;
     }
 
+    public float[] CalculateUrgencies()
+    {
+        return new float[] { 0f, 0.33f, 0.66f, 1f };
+    }
+
 
     // Getters & Setters block
     public GameObject getTriContainer() { return triContainer; }
@@ -351,6 +366,17 @@ public class BoidScript : MonoBehaviour
 
     public byte[] getRngBitArr() { return rngBitArr;  }
     public void setRngBitArr(byte[] rngBitArr) { this.rngBitArr = rngBitArr; }
+
+    public float[] getWeights() { return new float[] { separationWeight, alignmentWeight, cohesionWeight }; }
+    public void setWeights(float[] weights) 
+    {
+        separationWeight = weights[0];
+        separationRule.SetWeight(separationWeight);
+        alignmentWeight = weights[1];
+        alignmentRule.SetWeight(alignmentWeight);
+        cohesionWeight = weights[2];
+        cohesionRule.SetWeight(cohesionWeight);
+    }
 }
 
 // Used to store info about calculated target directions
@@ -376,12 +402,12 @@ public class BoidRule
     Transform transform;
     bool hasPosDiff;
     float isDirectionForwards;
-    float speed;
+    float weight;
 
-    public BoidRule(Transform transform, float speed, bool hasPosDiff, bool isDirectionForwards = true)
+    public BoidRule(Transform transform, float weight, bool hasPosDiff, bool isDirectionForwards = true)
     {
         this.transform = transform;
-        this.speed = speed;
+        this.weight = weight;
         this.hasPosDiff = hasPosDiff;
         this.isDirectionForwards = (isDirectionForwards == true ? 1 : -1);
     }
@@ -399,12 +425,12 @@ public class BoidRule
                 Vector3 posDiff = (targetVector - transform.position).normalized;
                 if (posDiff != Vector3.zero)
                 {
-                    targetDir = CalculateDirection(posDiff * isDirectionForwards, transform, speed);
+                    targetDir = CalculateDirection(posDiff * isDirectionForwards, transform, weight);
                     activeRuleCount++;
                 }
             } else
             {
-                targetDir = CalculateDirection(targetVector, transform, speed);
+                targetDir = CalculateDirection(targetVector, transform, weight);
                 activeRuleCount++;
             }
             boidsScanned = true;
@@ -418,13 +444,16 @@ public class BoidRule
         return Quaternion.Slerp(transform.rotation, pointToTarget, speed);
     }
 
-    public void OutputDirection(Quaternion targetDir, ref float targetAngle, ref Vector3 targetAxis)
+    public void OutputDirection(Quaternion targetDir, ref float targetAngle, ref Vector3 targetAxis) //WEIGHTS NOT AFFECTING ANYTHING
     {
         targetDir.ToAngleAxis(out float angle, out Vector3 axis);
         if (angle != 0)
         {
-            targetAngle += angle;
+            targetAngle += angle * weight;
             targetAxis += axis;
         }
     }
+
+    public float GetWeight() { return weight; }
+    public void SetWeight(float weight) { this.weight = weight; Debug.Log("changed weight to:" + weight); }
 }

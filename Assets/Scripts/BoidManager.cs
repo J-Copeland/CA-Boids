@@ -140,7 +140,10 @@ public class BoidManager : MonoBehaviour
         List<TriController> triList = triManagerObj.getTriList();
         foreach(BoidScript boid in boidList)
         {
-            UpdateDisplayedTris(boid, cellAutFuncs.PopulateCA(boid, triList));
+            List<TriController> activeTris = cellAutFuncs.PopulateCA(triList, boid.getRngBitArr(), boid.CalculateUrgencies());
+            boid.setActiveTris(activeTris.ToArray());
+            boid.setWeights(cellAutFuncs.CountActiveTrisInQuadrants(activeTris, triManagerObj.getTriList().Count()));
+            UpdateDisplayedTris(boid, activeTris);
         }
     }
 

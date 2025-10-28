@@ -184,20 +184,23 @@ public class TriManager : MonoBehaviour
 
     private void GenerateGrid(Transform holder)
     {
-        for(int i = 0; i < rowNumber; i++)
+        int quadrantSize = rowNumber / 2;
+
+        for (int i = 0; i < rowNumber; i++)
         {
             GameObject currentTriDown = null;
             TriController downController = null;
+
             for (int j = 0; j <= i; j++)
             {
                 GameObject currentTriUp = Instantiate(triUpPrefab, holder);
+
                 float scaleFactor = (currentTriUp.GetComponent<RectTransform>().localScale.x / rowNumber);
-                currentTriUp.GetComponent<RectTransform>().localScale = currentTriUp.GetComponent<RectTransform>().localScale / rowNumber;
-                currentTriUp.GetComponent<RectTransform>().localPosition = new Vector3((100 * j) - (100 * i / 2), (-86.6f * i) + ((rowNumber - 1) * 43.3f), 0) * scaleFactor; //-86.6 ~= (100sqrt3)/2 (triangle height)
+                currentTriUp.GetComponent<RectTransform>().localScale /= rowNumber;
+                currentTriUp.GetComponent<RectTransform>().localPosition = CalculateTriPos(i, j, 0, rowNumber, scaleFactor);
+
                 TriController upController = currentTriUp.GetComponent<TriController>();
-                upController.setTextState(displayCoords);
-                upController.setJ(i-j);
-                upController.setK(j);
+                upController.Populate(displayCoords, i - j, j, CalculateQuadrant(i, j, 0, quadrantSize).ToString());
                 triList.Add(upController);
 
                 //set adj from right up-pointy to left if exists
@@ -205,18 +208,18 @@ public class TriManager : MonoBehaviour
                 {
                     CreateAdjacencies(upController, downController);
                 }
-                
+
 
                 if (j != i)
                 {
                     //establish down-pointy
                     currentTriDown = Instantiate(triDownPrefab, holder);
-                    currentTriDown.GetComponent<RectTransform>().localScale = currentTriDown.GetComponent<RectTransform>().localScale / rowNumber;
-                    currentTriDown.GetComponent<RectTransform>().localPosition = new Vector3((100 * j) - (100 * i / 2) + 50, (-86.6f * i) + ((rowNumber-1) * 43.3f), 0) * scaleFactor;
+
+                    currentTriDown.GetComponent<RectTransform>().localScale /= rowNumber;
+                    currentTriDown.GetComponent<RectTransform>().localPosition = CalculateTriPos(i, j, 1, rowNumber, scaleFactor);
+
                     downController = currentTriDown.GetComponent<TriController>();
-                    downController.setTextState(displayCoords);
-                    downController.setJ(i-j-1);
-                    downController.setK(j);
+                    downController.Populate(displayCoords, i - j - 1, j, CalculateQuadrant(i, j, 1, quadrantSize).ToString());
                     triList.Add(downController);
 
                     //set adj from left up-pointy
@@ -228,7 +231,32 @@ public class TriManager : MonoBehaviour
             }
         }
 
-        
+
+    }
+
+    enum Quadrant
+    {
+        top,
+        left,
+        right,
+        center
+    }
+
+    private Quadrant CalculateQuadrant(int i, int j, int polarityOffset, int quadrantSize)
+    {
+        if(i < quadrantSize)
+            return Quadrant.top;
+        if (i-j-polarityOffset >= quadrantSize + quadrantSize % 2) // + 0/1 to account for odd number of rows
+            return Quadrant.left;
+        if (j >= quadrantSize + quadrantSize % 2) // + 0/1 to account for odd number of rows
+            return Quadrant.right;
+        return Quadrant.center;
+    }
+
+    private Vector3 CalculateTriPos(int i, int j, int polarityOffset, int rowNumber, float scaleFactor)
+    {
+        //-86.6 ~= (100sqrt3)/2 (triangle height)
+        return new Vector3((100 * j) - (100 * i / 2) + 50*polarityOffset, (-86.6f * i) + ((rowNumber - 1) * 43.3f), 0) * scaleFactor;
     }
 
 
@@ -374,7 +402,7 @@ public class TriManager : MonoBehaviour
             //    {
             //        if (activeTris[i].getAdjTris()[j].getState()) activeAdjs++;
             //    }
-            //    //Debug.Log("(" + activeTris[i].getJ() + "," + activeTris[i].getK() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
+            //    //Debug.Log("(" + activeTris[i].getI() + "," + activeTris[i].getJ() + "," + activeTris[i].getPolarity() + ") has: " + activeAdjs);
             //    if (activeAdjs < 2)
             //    {
             //        trisToRemove.Add(activeTris[i]);
